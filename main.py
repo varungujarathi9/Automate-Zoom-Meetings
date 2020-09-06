@@ -16,7 +16,9 @@ https://developers.google.com/calendar/quickstart/python
 #### TO-DO
 1. Check if app is already running
 2. Check if the person has responded yes to the meeting
-
+3. Read whether the event for Zoom only
+4. Add support for other platforms too
+5. Add support for iCalendar
 '''
 from __future__ import print_function
 import datetime
