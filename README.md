@@ -1,6 +1,6 @@
 # Automate-Zoom-Meetings
 
-## Python application to automatically join meetings scheduled on Google Calendar
+Python application to automatically join meetings scheduled on Google Calendar
 
 <b>WHY</b> - While 'Work From Home' has become a norm, many of us use 'Zoom Meetings' platform meetings an stuff. As a developer I used to lose track of time and forget about these meeting that were scheduled by my manager. Also it seems productive to focus on the work at hand rather than stressing about meeting timing and when to join and when to not. Thus automating the stuff.
 
