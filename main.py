@@ -71,14 +71,14 @@ def getCalendarEvents():
         print('No upcoming events found.')
     for event in events:
         startTimeStr = (event['start'].get('dateTime', event['start'].get('date')))[:-6]
-
+        descLength = len(event['description'])
         # get the meeting ID
         meetingIDIndexStart = int(event['description'].find('Meeting ID:'))
         meetingIDIndexEnd = meetingIDIndexStart + len('Meeting ID:')
         meetingIDStarted = False
         meetingIDExists = False
         meetingID = ''
-        while True:
+        while meetingIDIndexEnd < descLength:
             # read only number occuring after meetingIDIndexEnd
 
             nextOccurringCharacter = event['description'][meetingIDIndexEnd]
@@ -87,7 +87,7 @@ def getCalendarEvents():
                 meetingIDStarted = True
                 meetingID += nextOccurringCharacter
 
-            elif nextOccurringCharacter is '\n' and meetingIDStarted is True:
+            elif nextOccurringCharacter is '<' and meetingIDStarted is True:
                 break
 
         if meetingID is not '':
@@ -100,7 +100,7 @@ def getCalendarEvents():
         meetingPasswordStarted = False
         meetingPasswordExists = False
         meetingPassword = ''
-        descLength = len(event['description'])
+
         while meetingPasswordIndexEnd < descLength:
             # read only alphanumeric occuring after meetingPasswordIndexEnd
 
@@ -113,8 +113,34 @@ def getCalendarEvents():
             elif nextOccurringCharacter is '\n' and meetingPasswordStarted is True:
                 break
 
+        # getting meeting password
+        meetingLinkIndexStart = int(event['description'].find('Join Zoom Meeting'))
+        meetingLinkIndexEnd = meetingLinkIndexStart + len('Join Zoom Meeting') + 13
+        meetingLinkStarted = False
+        meetingLinkExists = False
+        meetingLink = ''
+
+        # print(event['description'])
+
+        while meetingLinkIndexEnd < meetingIDIndexStart:
+            # read only alphanumeric occuring after meetingLinkIndexEnd
+
+            nextOccurringCharacter = event['description'][meetingLinkIndexEnd]
+            meetingLinkIndexEnd += 1
+            if nextOccurringCharacter == '<':
+                while event['description'][meetingLinkIndexEnd] != '>':
+                    meetingLinkIndexEnd += 1
+                meetingLinkIndexEnd += 1
+            elif nextOccurringCharacter == '"' and meetingLinkStarted is True:
+                break
+            else:
+                meetingLinkStarted = True
+                meetingLink += nextOccurringCharacter
+
+        print(meetingLink)
+
         if meetingIDExists is True:
-            meetings[event['summary']] = {'Time':datetime.datetime.strptime(startTimeStr, '%Y-%m-%dT%H:%M:%S'), 'Meeting ID': meetingID, 'Password':meetingPassword}
+            meetings[event['summary']] = {'Time':datetime.datetime.strptime(startTimeStr, '%Y-%m-%dT%H:%M:%S'), 'Meeting ID': meetingID, 'Link':meetingLink, 'Password':meetingPassword}
 
 def startZoomCall(meetingID, meetingPassword):
     time.sleep(0.2)
@@ -131,13 +157,16 @@ def startZoomCall(meetingID, meetingPassword):
     x,y = pyautogui.locateCenterOnScreen('res/MeetingID.png',confidence = 0.8, grayscale=False)
     pyautogui.click(x,y)
 
+    time.sleep(2)
+
     pyautogui.write(str(meetingID))
-    pyautogui.press('enter',interval=5)
-    time.sleep(10)
+    time.sleep(2)
+    x,y = pyautogui.locateCenterOnScreen('res/JoinButton.png',confidence = 0.8, grayscale=False)
+    pyautogui.click(x,y)
+
+    time.sleep(2)
     pyautogui.write(meetingPassword)
     pyautogui.press('enter',interval = 10)
-
-    print('Hold (Ctrl+c) to exit the program ')
 
 if __name__ == '__main__':
     getCalendarEvents()
@@ -148,5 +177,6 @@ if __name__ == '__main__':
         for meetingName, meetingData in meetings.items():
             dateTimeNow = datetime.datetime.strptime(datetime.datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%dT%H:%M'), '%Y-%m-%dT%H:%M')
             if meetingData['Time'] <= dateTimeNow:
-                startZoomCall(meetingData['Meeting ID'], meetingData['Password'])
+                print(meetingData['Link'])
+                startZoomCall(meetingData['Link'], meetingData['Password'])
                 del meetings[meetingName]
