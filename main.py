@@ -12,6 +12,11 @@ Varun Gujarathi
 ### References
 https://github.com/prashanth-up/Zoom-Automation/blob/master/main.py
 https://developers.google.com/calendar/quickstart/python
+
+#### TO-DO
+1. Check if app is already running
+2. Check if the person has responded yes to the meeting
+
 '''
 from __future__ import print_function
 import datetime
@@ -113,29 +118,34 @@ def getCalendarEvents():
             elif nextOccurringCharacter is '\n' and meetingPasswordStarted is True:
                 break
 
-        # getting meeting password
-        meetingLinkIndexStart = int(event['description'].find('Join Zoom Meeting'))
-        meetingLinkIndexEnd = meetingLinkIndexStart + len('Join Zoom Meeting') + 13
-        meetingLinkStarted = False
-        meetingLinkExists = False
-        meetingLink = ''
+        # getting meeting link
+        #  try to get link from 'location' key
+        if event['location'] is not None:
+            meetingLink = event['location']
+        else:
+            joinTextStart = int(event['description'].find('Join'))
+            meetingLinkIndexStart = int(event['description'].find('http', joinTextStart, -1))
+            # meetingLinkIndexEnd = meetingLinkIndexStart + len('http') + 13
+            meetingLinkStarted = False
+            meetingLinkExists = False
+            meetingLink = ''
 
-        # print(event['description'])
+            # print(event['description'])
 
-        while meetingLinkIndexEnd < meetingIDIndexStart:
-            # read only alphanumeric occuring after meetingLinkIndexEnd
+            while meetingLinkIndexStart < meetingIDIndexStart:
+                # read only alphanumeric occuring after meetingLinkIndexEnd
 
-            nextOccurringCharacter = event['description'][meetingLinkIndexEnd]
-            meetingLinkIndexEnd += 1
-            if nextOccurringCharacter == '<':
-                while event['description'][meetingLinkIndexEnd] != '>':
-                    meetingLinkIndexEnd += 1
-                meetingLinkIndexEnd += 1
-            elif nextOccurringCharacter == '"' and meetingLinkStarted is True:
-                break
-            else:
-                meetingLinkStarted = True
-                meetingLink += nextOccurringCharacter
+                nextOccurringCharacter = event['description'][meetingLinkIndexStart]
+                meetingLinkIndexStart += 1
+                if nextOccurringCharacter == '<':
+                    while event['description'][meetingLinkIndexStart] != '>':
+                        meetingLinkIndexStart += 1
+                    meetingLinkIndexStart += 1
+                elif nextOccurringCharacter == '"' and meetingLinkStarted is True:
+                    break
+                else:
+                    meetingLinkStarted = True
+                    meetingLink += nextOccurringCharacter
 
         print(meetingLink)
 
@@ -143,28 +153,32 @@ def getCalendarEvents():
             meetings[event['summary']] = {'Time':datetime.datetime.strptime(startTimeStr, '%Y-%m-%dT%H:%M:%S'), 'Meeting ID': meetingID, 'Link':meetingLink, 'Password':meetingPassword}
 
 def startZoomCall(meetingID, meetingPassword):
+
+    # open zoom app
     time.sleep(0.2)
-
     os.popen('zoom')
-
     time.sleep(10)
 
+    # find the Join Meeting button
     x,y = pyautogui.locateCenterOnScreen('res/JoinMeeting.png',confidence = 0.8, grayscale=False)
     pyautogui.click(x,y)
-
     time.sleep(2)
 
+    # find the Meeting ID field
     x,y = pyautogui.locateCenterOnScreen('res/MeetingID.png',confidence = 0.8, grayscale=False)
     pyautogui.click(x,y)
-
     time.sleep(2)
 
+    # enter the meeting link
     pyautogui.write(str(meetingID))
     time.sleep(2)
+
+    # click on the Join button
     x,y = pyautogui.locateCenterOnScreen('res/JoinButton.png',confidence = 0.8, grayscale=False)
     pyautogui.click(x,y)
-
     time.sleep(2)
+
+    # enter the password 
     pyautogui.write(meetingPassword)
     pyautogui.press('enter',interval = 10)
 
@@ -172,10 +186,11 @@ if __name__ == '__main__':
     getCalendarEvents()
     while True:
         schedule.every().hour.do(getCalendarEvents)
-        print(meetings)
         time.sleep(1)
-        for meetingName, meetingData in meetings.items():
+        finalMeetings = meetings.copy()
+        for meetingName, meetingData in finalMeetings.items():
             dateTimeNow = datetime.datetime.strptime(datetime.datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%dT%H:%M'), '%Y-%m-%dT%H:%M')
+            dateTimeNow + datetime.timedelta(minutes = 10)
             if meetingData['Time'] <= dateTimeNow:
                 print(meetingData['Link'])
                 startZoomCall(meetingData['Link'], meetingData['Password'])
