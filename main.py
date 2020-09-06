@@ -15,11 +15,14 @@ https://developers.google.com/calendar/quickstart/python
 '''
 from __future__ import print_function
 import datetime
+import time
+import pytz
 import pickle
+import subprocess
 import os.path
+import os
 import pyautogui
 import schedule
-import time
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -31,7 +34,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 meetings = {}
 
 
-def main():
+def getCalendarEvents():
     """Shows basic usage of the Google Calendar API.
     Prints the start and name of the next 10 events on the user's calendar.
     """
@@ -67,7 +70,7 @@ def main():
     if not events:
         print('No upcoming events found.')
     for event in events:
-        startTime = event['start'].get('dateTime', event['start'].get('date'))
+        startTimeStr = (event['start'].get('dateTime', event['start'].get('date')))[:-6]
 
         # get the meeting ID
         meetingIDIndexStart = int(event['description'].find('Meeting ID:'))
@@ -77,8 +80,9 @@ def main():
         meetingID = ''
         while True:
             # read only number occuring after meetingIDIndexEnd
-            meetingIDIndexEnd += 1
+
             nextOccurringCharacter = event['description'][meetingIDIndexEnd]
+            meetingIDIndexEnd += 1
             if nextOccurringCharacter.isnumeric():
                 meetingIDStarted = True
                 meetingID += nextOccurringCharacter
@@ -96,10 +100,12 @@ def main():
         meetingPasswordStarted = False
         meetingPasswordExists = False
         meetingPassword = ''
-        while True:
+        descLength = len(event['description'])
+        while meetingPasswordIndexEnd < descLength:
             # read only alphanumeric occuring after meetingPasswordIndexEnd
-            meetingPasswordIndexEnd += 1
+
             nextOccurringCharacter = event['description'][meetingPasswordIndexEnd]
+            meetingPasswordIndexEnd += 1
             if nextOccurringCharacter.isalnum():
                 meetingPasswordStarted = True
                 meetingPassword += nextOccurringCharacter
@@ -108,8 +114,39 @@ def main():
                 break
 
         if meetingIDExists is True:
-            meetings[event['summary']] = {'Time':startTime, 'Meeting ID': meetingID, 'Password':meetingPassword}
+            meetings[event['summary']] = {'Time':datetime.datetime.strptime(startTimeStr, '%Y-%m-%dT%H:%M:%S'), 'Meeting ID': meetingID, 'Password':meetingPassword}
+
+def startZoomCall(meetingID, meetingPassword):
+    time.sleep(0.2)
+
+    os.popen('zoom')
+
+    time.sleep(10)
+
+    x,y = pyautogui.locateCenterOnScreen('res/JoinMeeting.png',confidence = 0.8, grayscale=False)
+    pyautogui.click(x,y)
+
+    time.sleep(2)
+
+    x,y = pyautogui.locateCenterOnScreen('res/MeetingID.png',confidence = 0.8, grayscale=False)
+    pyautogui.click(x,y)
+
+    pyautogui.write(str(meetingID))
+    pyautogui.press('enter',interval=5)
+    time.sleep(10)
+    pyautogui.write(meetingPassword)
+    pyautogui.press('enter',interval = 10)
+
+    print('Hold (Ctrl+c) to exit the program ')
 
 if __name__ == '__main__':
-    main()
-    print(meetings)
+    getCalendarEvents()
+    while True:
+        schedule.every().hour.do(getCalendarEvents)
+        print(meetings)
+        time.sleep(1)
+        for meetingName, meetingData in meetings.items():
+            dateTimeNow = datetime.datetime.strptime(datetime.datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%dT%H:%M'), '%Y-%m-%dT%H:%M')
+            if meetingData['Time'] <= dateTimeNow:
+                startZoomCall(meetingData['Meeting ID'], meetingData['Password'])
+                del meetings[meetingName]
