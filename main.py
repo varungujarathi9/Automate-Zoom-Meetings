@@ -149,10 +149,10 @@ def getCalendarEvents():
                     meetingLinkStarted = True
                     meetingLink += nextOccurringCharacter
 
-        print(meetingLink)
-
         if meetingIDExists is True:
             meetings[event['summary']] = {'Time':datetime.datetime.strptime(startTimeStr, '%Y-%m-%dT%H:%M:%S'), 'Meeting ID': meetingID, 'Link':meetingLink, 'Password':meetingPassword}
+
+    print(meetings.keys())
 
 def startZoomCall(meetingID, meetingPassword):
 
@@ -186,13 +186,16 @@ def startZoomCall(meetingID, meetingPassword):
 
 if __name__ == '__main__':
     getCalendarEvents()
+    dateTimeNow = None
     while True:
         schedule.every().hour.do(getCalendarEvents)
         time.sleep(1)
+        print(meetings)
+        print(dateTimeNow)
         finalMeetings = meetings.copy()
         for meetingName, meetingData in finalMeetings.items():
             dateTimeNow = datetime.datetime.strptime(datetime.datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%dT%H:%M'), '%Y-%m-%dT%H:%M')
-            dateTimeNow + datetime.timedelta(minutes = 10)
+            dateTimeNow = dateTimeNow + datetime.timedelta(minutes = 10)
             if meetingData['Time'] <= dateTimeNow:
                 print(meetingData['Link'])
                 startZoomCall(meetingData['Link'], meetingData['Password'])
